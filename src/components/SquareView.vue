@@ -15,7 +15,7 @@
     mounted() {
       WS.onmessage = (e) => {
         let data = JSON.parse(e.data);
-        if (data.code === 10) {
+        if (data.code === 201) {
             this.imgSrc=data.data
         }
       };

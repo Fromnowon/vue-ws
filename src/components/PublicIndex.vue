@@ -28,26 +28,45 @@
       :maskClosable="false">
       <div style="margin: 40px 0">
         <transition name="switch" mode="out-in">
-          <div v-if="!configNum" key="role">
-            <a-button block @click="competitorConf" type="primary" size="large">
+          <div v-if="configNum===0" key="role">
+            <a-button block @click="configNum=1" type="primary" size="large">
               我是选手
             </a-button>
-            <a-button block @click="judgeReg" type="primary" style="margin-top: 20px" size="large">
+            <a-button block @click="configNum=2" type="primary" style="margin-top: 20px" size="large">
               我是评委
             </a-button>
             <a-button block @click="squareReg" style="margin-top: 20px" size="large">
               展示端
             </a-button>
           </div>
-
-          <div v-else key="num" style="text-align: center">
-            <strong style="color: red">{{ !numValid?'序号冲突，请更改':'' }}</strong>
+          <div v-else-if="configNum===1" key="num" style="text-align: center">
+            <div v-show="!numValid">
+              <a-alert type="error" message="序号冲突，请更改"/>
+            </div>
+            <br>
             请输入参赛序号：
             <a-input-number :min="1" :max="10" v-model="num"/>
             <br>
             <a-button :loading="connecting"
                       block
                       @click="competitorReg"
+                      type="primary"
+                      style="width: 220px;margin-top: 30px" size="large">
+              确认
+            </a-button>
+          </div>
+          <div v-else-if="configNum===2" key="num" style="text-align: center">
+            <br>
+            请选择选手序号：
+            <a-select style="width: 80px" @change="judgeNumHandler">
+              <a-select-option value="1">1</a-select-option>
+              <a-select-option value="2">2</a-select-option>
+              <a-select-option value="3">3</a-select-option>
+            </a-select>
+            <br>
+            <a-button :loading="connecting"
+                      block
+                      @click="judgeReg"
                       type="primary"
                       style="width: 220px;margin-top: 30px" size="large">
               确认
@@ -72,7 +91,8 @@
         connecting: false,//标记连接状态
         visible: false,
         defaultServerIP: window.location.hostname,
-        configNum: false,//显示选手编号设置
+        configNum: 0,//序号配置
+        judgeNum: null,
         num: 1,//参赛序号
         numValid: true,//参赛序号是否合法
       }
@@ -81,31 +101,38 @@
       //检测服务器状态
 
     },
+    watch: {
+      configNum(value) {
+        if (value === 2) {
+          //拉取已连接选手序号
+          WS.send(JSON.stringify({code: 103}));
+        }
+      }
+    },
     methods: {
+      judgeNumHandler(num) {
+        this.judgeNum = num;
+      },
       cancelHandler() {
         //未选择身份则关闭连接
         WS.close();
         //关闭配置
-        this.configNum = false
-      },
-      judgeReg() {
-        sessionStorage.setItem('role', '评委');
-        WS.send(JSON.stringify({code: 2, data: 'judge'}));
-        this.$router.push('/judge');
-      },
-      competitorConf() {
-        this.configNum = true;
+        this.configNum = 0;
       },
       competitorReg() {
         sessionStorage.setItem('role', '参赛者');
-        WS.send(JSON.stringify({code: 2, data: {role: 'competitor', num: this.num}}));
+        WS.send(JSON.stringify({code: 102, data: {isCompetitor: true, role: 'competitor', num: this.num}}));
         this.connecting = true;
-
         //this.$router.push('/competitor');
+      },
+      judgeReg() {
+        sessionStorage.setItem('role', '评委');
+        WS.send(JSON.stringify({code: 102, data: {isCompetitor: false, role: 'judge', num: null}}));
+        this.$router.push('/judge');
       },
       squareReg() {
         sessionStorage.setItem('role', '展示端');
-        WS.send(JSON.stringify({code: 2, data: 'square'}));
+        WS.send(JSON.stringify({code: 102, data: {isCompetitor: false, role: 'square', num: null}}));
         this.$router.push('/square');
       },
       onClick() {
@@ -183,7 +210,7 @@
                 maskClosable: true
               });
               break;
-            case 2:
+            case 202:
               this.connecting = false;
               if (data.data === 'ok') {
                 this.numValid = true;
@@ -192,6 +219,9 @@
                 console.log(data.data);
                 this.numValid = false;
               }
+              break;
+            case 203:
+              console.log(data);
               break;
           }
         };
