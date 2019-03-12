@@ -1,18 +1,32 @@
 <template>
   <div class="main">
-    <canvas id="canvas" style="box-shadow: 0 0 5px #c2c2c2">
+    <a-modal
+      title="错误"
+      :visible="reconnectModal"
+      :closable="false"
+      :footer="null"
+      :keyboard="false"
+      :maskClosable="false">
+      <p>未连接服务器，点击重连</p>
+    </a-modal>
+    <canvas id="canvas" style="box-shadow: 0 0 10px grey;background: white">
       您的浏览器不支持canvas技术,请升级浏览器!
     </canvas>
-    <div class="btn-div">
-      <a-button size="large" type="primary" style="width: 100px" @click="saveIMG">保存</a-button>
-      <a-button size="large" style="width: 100px;margin-left: 20px" @click="eraserClick">
-        {{isEraser?'正在使用橡皮':'橡皮'}}
-      </a-button>
-      <a-button icon="delete" size="large" type="danger" style="width: 100px;float: right"
-                @click="canvas.option.control.clearCanvas()">
-        清空
-      </a-button>
-    </div>
+    <a-button shape="circle" type="primary" size='large' icon="check" style="position: absolute;bottom: 20px;left: 40px"
+              @click="saveIMG"/>
+    <a-button shape="circle" size='large' :icon="isEraser?'loading':'border'"
+              style="position: absolute;bottom: 20px;left: 120px"
+              @click="eraserClick"/>
+    <a-button shape="circle" size='large' type="danger" icon="delete"
+              style="position: absolute;bottom: 20px;right: 40px" @click="canvas.option.control.clearCanvas()"/>
+    <!--<a-button size="large" type="primary" style="width: 100px" @click="saveIMG">保存</a-button>-->
+    <!--<a-button size="large" style="width: 100px;margin-left: 20px" @click="eraserClick">-->
+    <!--{{isEraser?'正在使用橡皮':'橡皮'}}-->
+    <!--</a-button>-->
+    <!--<a-button icon="delete" size="large" type="danger" style="width: 100px;float: right"-->
+    <!--@click="canvas.option.control.clearCanvas()">-->
+    <!--清空-->
+    <!--</a-button>-->
 
   </div>
 </template>
@@ -26,16 +40,33 @@
       return {
         canvas: '',
         isEraser: false,
+        reconnectModal: false,
       }
     },
     mounted() {
       this.initBoard();
-      //禁止滚动
-      document.body.style.overflow = 'hidden';
+      //检测连接
+      if (WS === null) {
+        this.$error({
+          title: '警告',
+          content: "与服务器的连接断开",
+          maskClosable: false,
+          onOk() {
+            window.location.href = '/';
+          },
+        })
+      }
     },
     methods: {
       saveIMG() {
-        WS.send(JSON.stringify({code: 1, data: this.canvas.saveAsImg()}));
+        let data = this.canvas.saveAsImg();
+        if (data !== -1) {
+          this.$message.success('成功提交图像');
+          WS.send(JSON.stringify({code: 101, data: this.canvas.saveAsImg()}));
+        } else {
+          this.$message.error('图像为空');
+        }
+
       },
       eraserClick() {
         //橡皮擦
@@ -183,8 +214,8 @@
           this.saveAsImg = function () {
             var image = new Image();
             image.src = this.canvas.toDataURL("image/png", 0.5);
-            if (image.src == this.emptyCanvas) {
-              alert('请先书写')
+            if (image.src === this.emptyCanvas) {
+              return -1;
             } else {
               return image.src;
             }
@@ -284,8 +315,8 @@
          * 设置参数
          */
         this.canvas = new WriteFont('canvas', {
-          canvasWidth: document.body.clientWidth - 40, //canvas宽高
-          canvasHeight: document.body.clientHeight - 100,
+          canvasWidth: document.body.clientWidth, //canvas宽高
+          canvasHeight: document.body.clientHeight - 5,
           borderWidth: 0,
           writeWidth: 10,
           borderColor: 'black',
@@ -300,24 +331,17 @@
         //   writeCanvas.saveAsImg()
         // };
       }
-    },
-    beforeDestroy() {
-      //禁止滚动
-      document.body.style.overflow = 'auto';
     }
   }
 </script>
 
 <style scoped>
   .main {
+    background: whitesmoke;
+    position: relative;
     -webkit-user-select: none;
     -moz-user-select: none;
     user-select: none;
     -ms-user-select: none;
-    padding: 20px;
-  }
-
-  .btn-div {
-    padding-top: 15px;
   }
 </style>

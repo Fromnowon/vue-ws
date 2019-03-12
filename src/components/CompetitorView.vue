@@ -9,12 +9,19 @@
 
   export default {
     name: "CompetitorView",
+    mounted() {
+
+    },
     components: {
       Board
+    },
+    beforeDestroy() {
+
     }
   }
 </script>
 
 <style scoped>
-
+  .main {
+  }
 </style>

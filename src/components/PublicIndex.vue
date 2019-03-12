@@ -32,7 +32,7 @@
             <a-button block @click="configNum=1" type="primary" size="large">
               我是选手
             </a-button>
-            <a-button block @click="configNum=2" type="primary" style="margin-top: 20px" size="large">
+            <a-button v-show="false" block @click="onJudgeClick" type="primary" style="margin-top: 20px" size="large">
               我是评委
             </a-button>
             <a-button block @click="squareReg" style="margin-top: 20px" size="large">
@@ -58,17 +58,19 @@
           <div v-else-if="configNum===2" key="num" style="text-align: center">
             <br>
             请选择选手序号：
-            <a-select style="width: 80px" @change="judgeNumHandler">
-              <a-select-option value="1">1</a-select-option>
-              <a-select-option value="2">2</a-select-option>
-              <a-select-option value="3">3</a-select-option>
+            <a-select defaultValue="" style="width: 80px" @change="judgeNumHandler">
+              <a-select-option v-for="(num,index) in numList" :value="num" :key="index">{{ num }}</a-select-option>
             </a-select>
+            <a-button shape="circle" style="margin-left: 20px;" @click="onJudgeClick">
+              <a-icon type="reload"/>
+            </a-button>
             <br>
             <a-button :loading="connecting"
                       block
                       @click="judgeReg"
                       type="primary"
-                      style="width: 220px;margin-top: 30px" size="large">
+                      style="width: 220px;margin-top: 30px" size="large"
+                      :disabled="judgeNum===null">
               确认
             </a-button>
           </div>
@@ -92,24 +94,22 @@
         visible: false,
         defaultServerIP: window.location.hostname,
         configNum: 0,//序号配置
-        judgeNum: null,
-        num: 1,//参赛序号
+        judgeNum: null,//评委选择的参赛序号
+        num: 1,//选手输入参赛序号
         numValid: true,//参赛序号是否合法
+        numList: [],//参赛序号数组
       }
     },
     mounted() {
       //检测服务器状态
 
     },
-    watch: {
-      configNum(value) {
-        if (value === 2) {
-          //拉取已连接选手序号
-          WS.send(JSON.stringify({code: 103}));
-        }
-      }
-    },
     methods: {
+      onJudgeClick() {
+        this.configNum = 2;
+        //拉取序号
+        WS.send(JSON.stringify({code: 103}));
+      },
       judgeNumHandler(num) {
         this.judgeNum = num;
       },
@@ -121,18 +121,18 @@
       },
       competitorReg() {
         sessionStorage.setItem('role', '参赛者');
-        WS.send(JSON.stringify({code: 102, data: {isCompetitor: true, role: 'competitor', num: this.num}}));
+        WS.send(JSON.stringify({code: 102, data: {role: 'competitor', num: this.num}}));
         this.connecting = true;
         //this.$router.push('/competitor');
       },
       judgeReg() {
         sessionStorage.setItem('role', '评委');
-        WS.send(JSON.stringify({code: 102, data: {isCompetitor: false, role: 'judge', num: null}}));
+        WS.send(JSON.stringify({code: 102, data: {role: 'judge', num: this.judgeNum}}));
         this.$router.push('/judge');
       },
       squareReg() {
         sessionStorage.setItem('role', '展示端');
-        WS.send(JSON.stringify({code: 102, data: {isCompetitor: false, role: 'square', num: null}}));
+        WS.send(JSON.stringify({code: 102, data: {role: 'square'}}));
         this.$router.push('/square');
       },
       onClick() {
@@ -212,7 +212,7 @@
               break;
             case 202:
               this.connecting = false;
-              if (data.data === 'ok') {
+              if (data.data === 'ok' && this.configNum === 1) {
                 this.numValid = true;
                 this.$router.push('/competitor');
               } else {
@@ -221,7 +221,7 @@
               }
               break;
             case 203:
-              console.log(data);
+              this.numList = data.data;
               break;
           }
         };

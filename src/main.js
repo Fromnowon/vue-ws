@@ -5,13 +5,15 @@ import App from './App'
 import router from './router'
 import Antd from 'ant-design-vue'
 import 'ant-design-vue/dist/antd.css'
+import 'font-awesome/css/font-awesome.css'
 import Axios from 'axios'
 
-Vue.config.productionTip = false
 Vue.use(Antd)
-
 Vue.prototype.$axios = Axios;
 Vue.prototype.API = process.env.NODE_ENV === 'production' ? '' : '/api';
+Vue.config.productionTip = false
+
+
 window.WS = null;
 
 /* eslint-disable no-new */
